@@ -20,6 +20,12 @@ def main():
         
         print("--- Ejecutando rutina: 2. Asegurado ---")
         bot.rutina_asegurado()
+        
+        # Pequeña pausa antes de iniciar el tercer módulo
+        time.sleep(2)
+
+        print("--- Ejecutando rutina: 3. Deslinde ---")
+        bot.rutina_deslinde()
             
     except Exception as e:
         print(f"Ocurrió un error general: {e}")
