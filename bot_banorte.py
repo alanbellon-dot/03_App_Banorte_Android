@@ -1,5 +1,5 @@
 from appium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException 
 from appium.options.android import UiAutomator2Options
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
@@ -42,6 +42,22 @@ class BotBanorte:
         size = self.driver.get_window_size()
         start_y = int(size['height'] * 0.6) 
         end_y = int(size['height'] * 0.3) 
+        start_x = int(size['width'] * 0.5)
+
+        actions = ActionBuilder(self.driver)
+        pointer = actions.pointer_action
+        pointer.move_to_location(start_x, start_y)
+        pointer.pointer_down()
+        pointer.move_to_location(start_x, end_y)
+        pointer.pointer_up()
+        actions.perform()
+        time.sleep(1.5)
+
+    def scroll_muy_pequeno(self):
+        size = self.driver.get_window_size()
+        start_y = int(size['height'] * 0.5) 
+        # Cambiamos de 0.4 a 0.35 para que haga un poco más de recorrido
+        end_y = int(size['height'] * 0.35)   
         start_x = int(size['width'] * 0.5)
 
         actions = ActionBuilder(self.driver)
@@ -530,6 +546,17 @@ class BotBanorte:
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosADConductorBtnSave"]'))).click()
             time.sleep(2) 
 
+            # --- CERRAR POP-UP DE CONDUCTOR ---
+            print("Buscando pop-up de Conductor...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 4)
+                boton_cancelar = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
+                boton_cancelar.click()
+                print("Pop-up cerrado.")
+                time.sleep(1)
+            except (TimeoutException, StaleElementReferenceException):
+                print("El pop-up no apareció o se cerró muy rápido, continuando...")
+
             # ==============================
             # PESTAÑA 2: VEHÍCULO
             # ==============================
@@ -561,7 +588,29 @@ class BotBanorte:
             except: pass
 
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosADContainerBtnSave"]'))).click()
-            time.sleep(2) 
+            time.sleep(2)
+
+            # --- CERRAR POP-UP DE VEHÍCULO ---
+            print("Buscando PRIMER pop-up de Vehículo...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 4)
+                boton_1 = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
+                boton_1.click()
+                print("Primer pop-up cerrado.")
+                time.sleep(1.5)
+            except (TimeoutException, StaleElementReferenceException):
+                print("El primer pop-up no apareció o se cerró muy rápido, continuando...")
+
+            # --- CERRAR SEGUNDO POP-UP DE VEHÍCULO (CON PROTECCIÓN) ---
+            print("Buscando SEGUNDO pop-up de Vehículo...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 4)
+                boton_2 = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
+                boton_2.click()
+                print("Segundo pop-up cerrado.")
+                time.sleep(1.5)
+            except (TimeoutException, StaleElementReferenceException):
+                print("El segundo pop-up no apareció o se cerró muy rápido, continuando...")
 
             # ==============================
             # PESTAÑA 3: OCUPANTES
@@ -596,24 +645,96 @@ class BotBanorte:
 
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.FrameLayout[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroAutoOContainerDContacto"]/androidx.appcompat.widget.LinearLayoutCompat/android.widget.RelativeLayout/android.widget.FrameLayout/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat'))).click()
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]'))).send_keys("5555555555")
+            # ... código previo (donde llenas el número de teléfono del ocupante) ...
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]'))).click()
 
+            # --- GUARDAR OCUPANTES (Una sola vez) ---
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroAutoOContainerBtnSave"]'))).click()
             time.sleep(2)
 
-            # --- MANEJO DEL POP-UP FINAL Y REGRESO ---
-            print("Esperando posible pop-up de confirmación...")
-            try:
-                wait_rapido = WebDriverWait(self.driver, 3)
-                # Aceptamos el pop-up
-                wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnOk"]'))).click()
-                print("Pop-up aceptado. Regresando...")
-                time.sleep(1.5)
-                # Regresamos con la flecha
-                wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc="Navegar hacia arriba"]'))).click()
-                time.sleep(2)
-            except TimeoutException:
-                print("No apareció pop-up final.")
+            # --- REGRESO OBLIGATORIO DESPUÉS DE GUARDAR OCUPANTES ---
+            print("Ocupante guardado. Regresando a la pantalla anterior...")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc="Navegar hacia arriba"]'))).click()
+            time.sleep(2)
+
+            # ==============================
+            # PESTAÑA 4: DATOS DEL SEGURO DEL TERCERO
+            # ==============================
+            print("Llenando sección final del Seguro del Tercero...")
+            
+            # NOTA: Aquí puse el XPath de Spinner por defecto porque se borró en tu mensaje. 
+            # ¡Cámbialo si era otro botón!
+            xpath_primer_boton = '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]'
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, xpath_primer_boton))).click()
+            time.sleep(1)
+            
+            # Seleccionar SEGUROS BANORTE
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="SEGUROS BANORTE GENERALI SA DE CV"]'))).click()
+
+           # Llenar datos de póliza, inciso y teléfono
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]'))).send_keys("91H2719HY")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("1")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("9999999999")
+
+            try: self.driver.hide_keyboard() 
+            except: pass
+
+            # --- AQUI USAMOS EL SCROLL MUY PEQUEÑO ---
+            self.scroll_muy_pequeno()
+            time.sleep(1)
+
+            # --- CÁLCULO DE FECHAS DINÁMICAS ---
+            from datetime import datetime, timedelta
+            meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+            hoy = datetime.now()
+            futuro = hoy + timedelta(days=5)
+            
+            str_hoy = f"{hoy.day} {meses[hoy.month - 1]} {hoy.year}"
+            str_futuro = f"{futuro.day} {meses[futuro.month - 1]} {futuro.year}"
+            print(f"Fechas calculadas -> Hoy: {str_hoy} | Futuro: {str_futuro}")
+
+            # Seleccionar Fecha de HOY (Vigencia Desde)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).click()
+            time.sleep(1)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, f'//android.view.View[@content-desc="{str_hoy}"]'))).click()
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="android:id/button1"]'))).click()
+
+            # --- OTRO SCROLL MUY PEQUEÑO ANTES DE LA SEGUNDA FECHA ---
+            self.scroll_muy_pequeno()
+            time.sleep(1)
+
+            # Seleccionar Fecha FUTURA (Vigencia Hasta)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]'))).click()
+            time.sleep(1)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, f'//android.view.View[@content-desc="{str_futuro}"]'))).click()
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="android:id/button1"]'))).click()
+
+            self.scroll_hasta_abajo(repeticiones=1) # Le pongo 1 repetición, si le falta ponle 2
+            time.sleep(1.5)
+            
+            # Llenar nombres
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("RAMON")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("TEST")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).send_keys("TEST")
+
+            try: self.driver.hide_keyboard() 
+            except: pass
+
+            # Añadir teléfono
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.appcompat.widget.LinearLayoutCompat[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosPDInputInsuredBtnAddTel"]'))).click()
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]'))).send_keys("5555555555")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]'))).click()
+            time.sleep(1)
+
+            # Botón final de guardar
+            print("Guardando sección completa de Terceros...")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosADContainerBtnSave"]'))).click()
+
+            # Aceptar OK del pop-up
+            print("Aceptando pop-up final...")
+            wait_rapido = WebDriverWait(self.driver, 4)
+            wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnOk"]'))).click()
+            time.sleep(2)
 
             print("¡Módulo Terceros completado al 100%!")
 
