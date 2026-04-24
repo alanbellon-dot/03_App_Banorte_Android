@@ -153,9 +153,36 @@ class BotBanorte:
         print("Iniciando Módulo Declaraciones...")
         try:
             self.scroll_hasta_abajo(repeticiones=2) 
+            
+            # 1. Clic para entrar al último siniestro
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/fsiniestrosPRecycler"]/android.widget.FrameLayout[4]/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat[1]/android.widget.RelativeLayout/androidx.appcompat.widget.LinearLayoutCompat'))).click()
+            
+            # --- POSIBLE POP-UP 1 (Al entrar al siniestro) ---
+            print("Buscando posible pop-up al entrar al siniestro...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 3)
+                boton_ok_1 = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnOk"]')))
+                boton_ok_1.click()
+                print("Primer pop-up aceptado.")
+                time.sleep(1)
+            except (TimeoutException, StaleElementReferenceException):
+                print("No apareció el primer pop-up, continuando...")
+
+            # 2. Clic en confirmar arribo
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/farriboBtnConfirm"]'))).click()
             
+            # --- POSIBLE POP-UP 2 (Al confirmar arribo) ---
+            print("Buscando posible pop-up al confirmar arribo...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 3)
+                boton_ok_2 = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnOk"]')))
+                boton_ok_2.click()
+                print("Segundo pop-up aceptado.")
+                time.sleep(1)
+            except (TimeoutException, StaleElementReferenceException):
+                print("No apareció el segundo pop-up, continuando...")
+
+            # 3. Empieza la rutina de llenar serie y placas (tu código original)
             print("Esperando pop-up de arribo (máximo 5 segundos)...")
             try:
                 wait_corto = WebDriverWait(self.driver, 5)
