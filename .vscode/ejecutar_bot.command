@@ -15,21 +15,29 @@ git pull origin main --quiet
 echo "✔️ Actualizado."
 echo ""
 
+# 3. Revisar, crear y activar el entorno virtual AUTOMÁTICAMENTE
+if [ ! -d ".venv" ]; then
+    echo "⚠️ Entorno nuevo detectado. Configurando la Mac automáticamente (esto tardará un minuto)..."
+    python3 -m venv .venv
+    source .venv/bin/activate
+    
+    echo "📦 Instalando Appium y librerías..."
+    # Si tienes un requirements.txt usa: pip install -r requirements.txt
+    pip install Appium-Python-Client
+    echo "✔️ Instalación completa."
+else
+    # Si ya existe, solo lo activa rápido
+    source .venv/bin/activate
+fi
+
+echo ""
 echo "🚀 Iniciando el proceso completo..."
 echo "Por favor, no toques el teléfono..."
 echo ""
 
-# 3. Activar el entorno virtual (En Mac la ruta es diferente a Windows)
-if [ -d ".venv" ]; then
-    source .venv/bin/activate
-else
-    echo "⚠️ No se encontró el entorno virtual (.venv)."
-    echo "Asegúrate de crearlo o revisa la ruta."
-fi
-
-# 4. Ejecutar el código principal (En Mac suele usarse python3)
+# 4. Ejecutar el código principal
 python3 main.py
 
-# 5. Pausa antes de cerrar la terminal (Equivalente al 'pause' de Windows)
+# 5. Pausa antes de cerrar
 echo ""
 read -p "Proceso terminado. Presiona [Enter] para salir..."
