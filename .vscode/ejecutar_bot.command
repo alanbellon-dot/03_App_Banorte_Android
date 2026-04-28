@@ -11,6 +11,8 @@ echo ""
 
 # 2. Jalar los últimos cambios de GitHub de forma automática
 echo "🔄 Buscando actualizaciones en la nube..."
+# Esto borra cambios locales accidentales para evitar que el 'git pull' aborte
+git reset --hard HEAD --quiet
 git pull origin main --quiet
 echo "✔️ Actualizado."
 echo ""
@@ -30,14 +32,18 @@ else
     source .venv/bin/activate
 fi
 
+# 4. Configurar variables de Android para Appium (Evita el error de ANDROID_HOME)
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+
 echo ""
 echo "🚀 Iniciando el proceso completo..."
 echo "Por favor, no toques el teléfono..."
 echo ""
 
-# 4. Ejecutar el código principal
+# 5. Ejecutar el código principal
 python3 main.py
 
-# 5. Pausa antes de cerrar
+# 6. Pausa antes de cerrar
 echo ""
 read -p "Proceso terminado. Presiona [Enter] para salir..."
