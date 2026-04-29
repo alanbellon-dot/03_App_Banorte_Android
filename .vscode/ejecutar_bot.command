@@ -11,28 +11,33 @@ echo ""
 
 # 2. Jalar los últimos cambios de GitHub de forma automática
 echo "🔄 Buscando actualizaciones en la nube..."
-# Esto borra cambios locales accidentales para evitar que el 'git pull' aborte
+# Esto borra cambios locales accidentales para evitar conflictos
 git reset --hard HEAD --quiet
 git pull origin main --quiet
 echo "✔️ Actualizado."
 echo ""
 
-# 3. Revisar, crear y activar el entorno virtual AUTOMÁTICAMENTE
+# 3. Iniciar el servidor de Appium en segundo plano
+echo "📱 Iniciando servidor Appium..."
+# Cierra cualquier proceso previo de node/appium para evitar errores de puerto ocupado
+killall node 2>/dev/null
+appium &
+sleep 5 # Espera 5 segundos a que Appium inicie correctamente
+
+# 4. Revisar, crear y activar el entorno virtual AUTOMÁTICAMENTE
 if [ ! -d ".venv" ]; then
-    echo "⚠️ Entorno nuevo detectado. Configurando la Mac automáticamente (esto tardará un minuto)..."
+    echo "⚠️ Entorno nuevo detectado. Configurando la Mac (tardará un minuto)..."
     python3 -m venv .venv
     source .venv/bin/activate
     
-    echo "📦 Instalando Appium y librerías..."
-    # Si tienes un requirements.txt usa: pip install -r requirements.txt
-    pip install Appium-Python-Client
+    echo "📦 Instalando librerías necesarias..."
+    pip install Appium-Python-Client selenium
     echo "✔️ Instalación completa."
 else
-    # Si ya existe, solo lo activa rápido
     source .venv/bin/activate
 fi
 
-# 4. Configurar variables de Android para Appium (Evita el error de ANDROID_HOME)
+# 5. Configurar variables de Android para Appium
 export ANDROID_HOME=$HOME/Library/Android/sdk
 export PATH=$PATH:$ANDROID_HOME/platform-tools
 
@@ -41,9 +46,12 @@ echo "🚀 Iniciando el proceso completo..."
 echo "Por favor, no toques el teléfono..."
 echo ""
 
-# 5. Ejecutar el código principal
+# 6. Ejecutar el código principal
 python3 main.py
 
-# 6. Pausa antes de cerrar
+# 7. Limpieza y cierre
 echo ""
+echo "🛑 Cerrando Appium..."
+killall node 2>/dev/null
+
 read -p "Proceso terminado. Presiona [Enter] para salir..."
