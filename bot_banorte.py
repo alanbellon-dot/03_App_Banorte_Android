@@ -479,9 +479,33 @@ class BotBanorte:
             # ==============================
             # PESTAÑA 1: CONDUCTOR (TERCERO)
             # ==============================
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosFACheckAutosSI"]'))).click()
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.appcompat.widget.LinearLayoutCompat[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosAutosBtnInfoVehicle"]'))).click()
+            
+            # 1. VERIFICAR EL BOTÓN DE AGREGAR (+)
+            print("Verificando si es necesario apretar el botón de agregar (+)...")
+            try:
+                wait_corto = WebDriverWait(self.driver, 4)
+                boton_add_tercero = wait_corto.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroAutoContainerFBtnAdd"]')))
+                boton_add_tercero.click()
+                print("Botón (+) apretado. Desplegando menú...")
+                time.sleep(1.5) 
+            except TimeoutException:
+                print("El botón (+) no estaba presente. Avanzando...")
 
+            # 2. SELECCIONAR "AUTOS SÍ" (Con protección por si ya está seleccionado)
+            try:
+                print("Seleccionando 'Autos SÍ'...")
+                self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosFACheckAutosSI"]'))).click()
+                time.sleep(1)
+            except Exception:
+                print("La opción 'Autos SÍ' ya estaba seleccionada o no se encontró. Continuando...")
+
+            # 3. ENTRAR AL FORMULARIO DEL VEHÍCULO / CONDUCTOR
+            print("Entrando a capturar información del vehículo y conductor...")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.appcompat.widget.LinearLayoutCompat[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosAutosBtnInfoVehicle"]'))).click()
+            time.sleep(1)
+
+            # 4. LLENAR NOMBRES Y APELLIDOS
+            print("Llenando datos del conductor...")
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]'))).send_keys("CARLOS")
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("TEST")
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("TEST")
@@ -672,7 +696,6 @@ class BotBanorte:
 
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.FrameLayout[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroAutoOContainerDContacto"]/androidx.appcompat.widget.LinearLayoutCompat/android.widget.RelativeLayout/android.widget.FrameLayout/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat'))).click()
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]'))).send_keys("5555555555")
-            # ... código previo (donde llenas el número de teléfono del ocupante) ...
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]'))).click()
 
             # --- GUARDAR OCUPANTES (Una sola vez) ---
@@ -689,8 +712,6 @@ class BotBanorte:
             # ==============================
             print("Llenando sección final del Seguro del Tercero...")
             
-            # NOTA: Aquí puse el XPath de Spinner por defecto porque se borró en tu mensaje. 
-            # ¡Cámbialo si era otro botón!
             xpath_primer_boton = '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]'
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, xpath_primer_boton))).click()
             time.sleep(1)
@@ -698,7 +719,7 @@ class BotBanorte:
             # Seleccionar SEGUROS BANORTE
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="SEGUROS BANORTE GENERALI SA DE CV"]'))).click()
 
-           # Llenar datos de póliza, inciso y teléfono
+            # Llenar datos de póliza, inciso y teléfono
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]'))).send_keys("91H2719HY")
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("1")
             self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("9999999999")
@@ -717,18 +738,14 @@ class BotBanorte:
             meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
             hoy = datetime.now()
             
-            # Primer día del mes actual (siempre es 1, lo formateamos a "01")
             primer_dia = 1
-            # El :02d asegura que si el día es 1, se escriba como "01"
             str_inicio = f"{primer_dia:02d} {meses[hoy.month - 1]} {hoy.year}"
-            
-            # Último día del mes actual (ej. 30 o 31)
             ultimo_dia = calendar.monthrange(hoy.year, hoy.month)[1]
             str_fin = f"{ultimo_dia:02d} {meses[hoy.month - 1]} {hoy.year}"
             
             print(f"Fechas calculadas -> Inicio: {str_inicio} | Fin: {str_fin}")
 
-            # Seleccionar Fecha INICIO (Vigencia Desde - Día 01 del mes)
+            # Seleccionar Fecha INICIO 
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).click()
             time.sleep(1)
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, f'//android.view.View[@content-desc="{str_inicio}"]'))).click()
@@ -738,7 +755,7 @@ class BotBanorte:
             self.scroll_muy_pequeno()
             time.sleep(1)
 
-            # Seleccionar Fecha FIN (Vigencia Hasta - Último día del mes)
+            # Seleccionar Fecha FIN 
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]'))).click()
             time.sleep(1)
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, f'//android.view.View[@content-desc="{str_fin}"]'))).click()
@@ -984,9 +1001,140 @@ class BotBanorte:
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc="Navegar hacia arriba"]'))).click()
             time.sleep(2)
 
+            # --- GUARDAR SEGUNDO TERCERO COMPLETO ---
+            print("Guardando segundo Tercero completo...")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosADContainerBtnSave"]'))).click()
+            time.sleep(2)
+
+            # --- CONFIRMAR POP-UP DE GUARDADO ---
+            print("Aceptando pop-up de confirmación del segundo tercero...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 4)
+                wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnOk"]'))).click()
+                time.sleep(2)
+            except TimeoutException:
+                print("El pop-up de confirmación no apareció, continuando...")
+
             # ==============================================================
-            # FIN DEL SEGUNDO TERCERO HASTA OCUPANTES
+            # TERCERA PARTE: TERCERO NO AUTOS (PEATÓN / OTROS)
             # ==============================================================
+            print("Iniciando tercera parte: NO AUTOS...")
+
+            # 1. Pop-up extra después de la segunda confirmación
+            print("Buscando pop-up extra y cancelando...")
+            try:
+                wait_rapido = WebDriverWait(self.driver, 4)
+                boton_cancelar_extra = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
+                boton_cancelar_extra.click()
+                time.sleep(1)
+            except TimeoutException:
+                print("El pop-up extra no apareció, continuando...")
+
+            # 2. Regresar a la pantalla anterior
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc="Navegar hacia arriba"]'))).click()
+            time.sleep(2)
+
+            # 3. Entrar a la sección NO AUTOS (Usamos contains para evitar errores con el contador)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "NO AUTOS")]'))).click()
+            time.sleep(1)
+
+            # 4. Lógica de selección del No Auto (si aparece directo o hay que darle al "+")
+            try:
+                wait_corto = WebDriverWait(self.driver, 4)
+                wait_corto.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[1]/androidx.appcompat.widget.LinearLayoutCompat'))).click()
+            except TimeoutException:
+                print("La opción no estaba directa. Apretando botón de agregar (+)...")
+                self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroNoautoFABtnAdd"]'))).click()
+                time.sleep(1)
+                self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[1]/androidx.appcompat.widget.LinearLayoutCompat'))).click()
+
+            # --- AUMENTAMOS LA PAUSA PARA ASEGURAR QUE EL FORMULARIO CARGUE ---
+            print("Esperando a que la pantalla del formulario se abra por completo...")
+            time.sleep(3)
+
+            # 5. Llenado de datos (Parte 1)
+            print("Llenando datos del Peatón/No Auto...")
+            
+            # Usamos element_to_be_clickable en lugar de presence_of_element_located en el primero
+            # para obligar al bot a esperar a que la animación termine y el campo sea interactivo
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]'))).send_keys("prueba")
+            
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("Regina")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("test")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).send_keys("test")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]'))).send_keys("24")
+
+            try: self.driver.hide_keyboard() 
+            except: pass
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckGeneroM"]'))).click()
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckBox[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckTratamiento"]'))).click()
+
+            # 6. Pequeño scroll y Lesiones
+            self.scroll_pequeno()
+            time.sleep(1)
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckLesionesSI"]'))).click()
+            
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]'))).click()
+            time.sleep(1)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="Fractura Cuello"]'))).click()
+
+            # 7. Otro pequeño scroll y Dirección (Estado, Municipio, Colonia)
+            self.scroll_pequeno()
+            time.sleep(1)
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[2]'))).click()
+            time.sleep(1)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="CIUDAD DE MEXICO"]'))).click()
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[3]'))).click()
+            time.sleep(1)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="Gustavo A. Madero"]'))).click()
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[4]'))).click()
+            time.sleep(1)
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="Tepetates"]'))).click()
+
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("calle test")
+            try: self.driver.hide_keyboard() 
+            except: pass
+
+            # 8. Pequeño scroll y más datos de la dirección
+            self.scroll_pequeno()
+            time.sleep(1)
+
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("400")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).send_keys("1")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]'))).send_keys("casa bonita")
+            try: self.driver.hide_keyboard() 
+            except: pass
+
+            # 9. Scroll hasta abajo y Contactos
+            self.scroll_hasta_abajo(repeticiones=1)
+            time.sleep(1)
+
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[6]'))).send_keys("pruebaBan@gmail.com")
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[7]'))).send_keys("pruebaBan@gmail.com")
+            try: self.driver.hide_keyboard() 
+            except: pass
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.FrameLayout[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosPContainerDcontacto"]/androidx.appcompat.widget.LinearLayoutCompat/android.widget.RelativeLayout/android.widget.FrameLayout/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat'))).click()
+            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]'))).send_keys("5555555555")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]'))).click()
+
+            # 10. Pequeño scroll y Firma
+            self.scroll_pequeno()
+            time.sleep(1)
+
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@text="AÑADIR FIRMA DIGITAL"]'))).click()
+            self.firmar('//android.view.View[@resource-id="com.mx.aseguradoradigital.banorte:id/signaturePad"]')
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/signatureBtnOk"]'))).click()
+
+            # 11. Guardar sección NO AUTOS
+            print("Guardando sección de Tercero: NO AUTOS...")
+            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosNoAutoContainerBtnSave"]'))).click()
+            time.sleep(2)
 
             print("¡Módulo Terceros completado al 100%!")
 
