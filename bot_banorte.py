@@ -464,7 +464,7 @@ class BotBanorte:
         finally:
             self.wait = wait_original
 
-    def rutina_terceros(self):
+    def rutina_terceros(self, tipo_ejecucion=1):
         print("Iniciando Módulo Terceros...")
         try:
             self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/capturaMenuFRecycler"]/android.widget.FrameLayout[6]/androidx.appcompat.widget.LinearLayoutCompat'))).click()
@@ -476,12 +476,16 @@ class BotBanorte:
         self.wait = WebDriverWait(self.driver, 8)
 
         try:
-            # ==============================
-            # PESTAÑA 1: CONDUCTOR (TERCERO)
-            # ==============================
+            # ==============================================================
+            # ENVOLVEMOS LA PARTE DE AUTOS
+            # ==============================================================
+            if tipo_ejecucion in [1, 2]:
+                # ==============================
+                # PESTAÑA 1: CONDUCTOR (TERCERO)
+                # ==============================
             
             # 1. VERIFICAR EL BOTÓN DE AGREGAR (+)
-            print("Verificando si es necesario apretar el botón de agregar (+)...")
+                print("Verificando si es necesario apretar el botón de agregar (+)...")
             try:
                 wait_corto = WebDriverWait(self.driver, 4)
                 boton_add_tercero = wait_corto.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroAutoContainerFBtnAdd"]')))
@@ -1015,126 +1019,271 @@ class BotBanorte:
             except TimeoutException:
                 print("El pop-up de confirmación no apareció, continuando...")
 
+          
+           # ==============================================================
+            # ENVOLVEMOS LA TERCERA PARTE: TERCERO NO AUTOS (PEATÓN / OTROS)
             # ==============================================================
-            # TERCERA PARTE: TERCERO NO AUTOS (PEATÓN / OTROS)
-            # ==============================================================
-            print("Iniciando tercera parte: NO AUTOS...")
+            if tipo_ejecucion in [1, 3]:  
+                print("Iniciando tercera parte: NO AUTOS...")
 
-            # 1. Pop-up extra después de la segunda confirmación
-            print("Buscando pop-up extra y cancelando...")
-            try:
-                wait_rapido = WebDriverWait(self.driver, 4)
-                boton_cancelar_extra = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
-                boton_cancelar_extra.click()
+                # --- LÓGICA INTELIGENTE DE NAVEGACIÓN ---
+                if tipo_ejecucion == 1:
+                    print("Buscando pop-up extra y cancelando...")
+                    try:
+                        wait_rapido = WebDriverWait(self.driver, 4)
+                        boton_cancelar_extra = wait_rapido.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
+                        boton_cancelar_extra.click()
+                        time.sleep(1)
+                    except TimeoutException:
+                        print("El pop-up extra no apareció, continuando...")
+
+                    # Regresar a la pantalla anterior
+                    self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc="Navegar hacia arriba"]'))).click()
+                    time.sleep(2)
+
+                # 3. Entrar a la sección NO AUTOS
+                self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "NO AUTOS")]'))).click()
                 time.sleep(1)
-            except TimeoutException:
-                print("El pop-up extra no apareció, continuando...")
 
-            # 2. Regresar a la pantalla anterior
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@content-desc="Navegar hacia arriba"]'))).click()
-            time.sleep(2)
+                # --- FUNCIONES AUXILIARES PARA AUTO-SCROLL INTELIGENTE ---
+                def click_auto_scroll(xpath, max_intentos=5):
+                    for _ in range(max_intentos):
+                        try:
+                            elemento = WebDriverWait(self.driver, 1.5).until(EC.element_to_be_clickable((AppiumBy.XPATH, xpath)))
+                            elemento.click()
+                            return
+                        except TimeoutException:
+                            self.scroll_pequeno()
+                    raise Exception(f"No se pudo encontrar/clickear (aún bajando la pantalla): {xpath}")
 
-            # 3. Entrar a la sección NO AUTOS (Usamos contains para evitar errores con el contador)
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "NO AUTOS")]'))).click()
-            time.sleep(1)
+                def escribir_auto_scroll(xpath, texto, max_intentos=5):
+                    for _ in range(max_intentos):
+                        try:
+                            elemento = WebDriverWait(self.driver, 1.5).until(EC.presence_of_element_located((AppiumBy.XPATH, xpath)))
+                            elemento.clear()
+                            elemento.send_keys(texto)
+                            try: self.driver.hide_keyboard()
+                            except: pass
+                            return
+                        except TimeoutException:
+                            self.scroll_pequeno()
+                    raise Exception(f"No se pudo encontrar/escribir (aún bajando la pantalla): {xpath}")
 
-            # 4. Lógica de selección del No Auto (si aparece directo o hay que darle al "+")
-            try:
-                wait_corto = WebDriverWait(self.driver, 4)
-                wait_corto.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[1]/androidx.appcompat.widget.LinearLayoutCompat'))).click()
-            except TimeoutException:
-                print("La opción no estaba directa. Apretando botón de agregar (+)...")
-                self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroNoautoFABtnAdd"]'))).click()
+                def click_texto_lista(texto, max_intentos=8):
+                    xpath = f'//android.widget.CheckedTextView[contains(@text, "{texto}")]'
+                    for _ in range(max_intentos):
+                        try:
+                            elemento = WebDriverWait(self.driver, 1.5).until(EC.element_to_be_clickable((AppiumBy.XPATH, xpath)))
+                            elemento.click()
+                            return
+                        except TimeoutException:
+                            self.scroll_muy_pequeno()
+                    raise Exception(f"No se pudo encontrar el texto en la lista desplegable: {texto}")
+
+                # ==============================
+                # 1. PEATÓN
+                # ==============================
+                print("Iniciando registro de Peatón...")
+                try:
+                    WebDriverWait(self.driver, 3).until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[1]/androidx.appcompat.widget.LinearLayoutCompat'))).click()
+                except TimeoutException:
+                    self.driver.find_element(AppiumBy.XPATH, '//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroNoautoFABtnAdd"]').click()
+                    time.sleep(1)
+                    self.driver.find_element(AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[1]/androidx.appcompat.widget.LinearLayoutCompat').click()
+                
+                time.sleep(3)
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]', "prueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Raul")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "Tezt")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]', "Test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "34")
+                
+                click_auto_scroll('//android.widget.CheckBox[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckTratamiento"]')
+                click_auto_scroll('//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckLesionesSI"]')
+                
+                # Cuadros desplegables secuenciales (Sin forzar scroll en medio)
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]')
+                click_texto_lista("Fractura Cuello")
+
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[2]')
+                click_texto_lista("CIUDAD DE MEXICO")
+
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[3]')
+                click_texto_lista("Coyoacán")
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Calle test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "14")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "Casa prueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[6]', "PeatonBanAndr@gmail.com") 
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[7]', "PeatonBanAndr@gmail.com") 
+
+                click_auto_scroll('//android.widget.FrameLayout[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosPContainerDcontacto"]/androidx.appcompat.widget.LinearLayoutCompat/android.widget.RelativeLayout/android.widget.FrameLayout/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat')
+                escribir_auto_scroll('//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]', "2222222222")
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]')
+
+                click_auto_scroll('//android.widget.Button[@text="AÑADIR FIRMA DIGITAL"]')
+                self.firmar('//android.view.View[@resource-id="com.mx.aseguradoradigital.banorte:id/signaturePad"]')
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/signatureBtnOk"]')
+                
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosNoAutoContainerBtnSave"]')
+                time.sleep(2)
+
+                # ==============================
+                # 2. CICLISTA
+                # ==============================
+                print("Iniciando registro de Ciclista...")
+                click_auto_scroll('//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroNoautoFABtnAdd"]')
+                click_auto_scroll('//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[2]/androidx.appcompat.widget.LinearLayoutCompat')
+                time.sleep(2)
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]', "MarcaPrueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Daño Prueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "Prueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]', "Pamela")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "Tezt")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[6]', "test") 
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[7]', "28")
+
+                click_auto_scroll('//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroCiclistaDCheckGeneroM"]')
+                click_auto_scroll('//android.widget.CheckBox[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroCiclistaDCheckTratamiento"]')
+                click_auto_scroll('//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroCiclistaDCheckLesionesSI"]')
+
+                # Cuadros desplegables secuenciales (Sin forzar scroll en medio)
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]')
+                click_texto_lista("Fractura Espalda")
+
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[2]')
+                click_texto_lista("CIUDAD DE MEXICO")
+
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[3]')
+                click_texto_lista("Coyoacán")
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Calle Test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "32")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "Prueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[6]', "cliclistaPruebaAndr@gmail.com")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[7]', "cliclistaPruebaAndr@gmail.com") 
+
+                click_auto_scroll('//android.widget.FrameLayout[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosCContainerDContacto"]/androidx.appcompat.widget.LinearLayoutCompat/android.widget.RelativeLayout/android.widget.FrameLayout/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat')
+                escribir_auto_scroll('//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]', "4444444444")
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]')
+
+                click_auto_scroll('//android.widget.Button[@text="AÑADIR FIRMA DIGITAL"]')
+                self.firmar('//android.view.View[@resource-id="com.mx.aseguradoradigital.banorte:id/signaturePad"]')
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/signatureBtnOk"]')
+
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosNoAutoContainerBtnSave"]')
+                time.sleep(2)
+
+                # ==============================
+                # 3. OBRA CIVIL
+                # ==============================
+                print("Iniciando registro de Obra Civil...")
+                click_auto_scroll('//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroNoautoFABtnAdd"]')
+                click_auto_scroll('//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[3]/androidx.appcompat.widget.LinearLayoutCompat')
+                time.sleep(2)
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]', "Ramiro")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Tezt")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "Test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]', "45")
+                
+                click_auto_scroll('//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroObraCCheckGeneroH"]')
+                click_auto_scroll('//android.widget.CheckBox[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroObraCCheckTratamiento"]')
+                
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "prueba")
+
+                click_auto_scroll('//androidx.appcompat.widget.LinearLayoutCompat[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosPDInputInsuredBtnAddTel"]')
+                escribir_auto_scroll('//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]', "3333333333")
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]')
+
+                # Sin lesiones, Estado es [1] y Municipio [2]
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]')
+                click_texto_lista("CIUDAD DE MEXICO")
+
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[2]')
+                click_texto_lista("Coyoacán")
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Calle Test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "567")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "Prueba")
+
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosNoAutoContainerBtnSave"]')
+                time.sleep(2)
+
+                # ==============================
+                # 4. BIENES INDETERMINADOS
+                # ==============================
+                print("Iniciando registro de Bienes Indeterminados...")
+                click_auto_scroll('//android.widget.ImageButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroNoautoFABtnAdd"]')
+                click_auto_scroll('//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[4]/androidx.appcompat.widget.LinearLayoutCompat')
+                time.sleep(2)
+
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]', "prueba")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Luke")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "Tezt")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]', "Test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "38")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[6]', "daños test")
+                
+                # Scroll para tapar los nombres y revelar Proveedor
+                self.scroll_pequeno()
                 time.sleep(1)
-                self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//androidx.recyclerview.widget.RecyclerView[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertTNoautosRecycler"]/android.widget.FrameLayout[1]/androidx.appcompat.widget.LinearLayoutCompat'))).click()
 
-            # --- AUMENTAMOS LA PAUSA PARA ASEGURAR QUE EL FORMULARIO CARGUE ---
-            print("Esperando a que la pantalla del formulario se abra por completo...")
-            time.sleep(3)
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "Proveedor Test") 
 
-            # 5. Llenado de datos (Parte 1)
-            print("Llenando datos del Peatón/No Auto...")
-            
-            # Usamos element_to_be_clickable en lugar de presence_of_element_located en el primero
-            # para obligar al bot a esperar a que la animación termine y el campo sea interactivo
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[1]'))).send_keys("prueba")
-            
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("Regina")
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("test")
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).send_keys("test")
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]'))).send_keys("24")
+                click_auto_scroll('//androidx.appcompat.widget.LinearLayoutCompat[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosPDInputInsuredBtnAddTel"]')
+                escribir_auto_scroll('//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]', "9999999999")
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]')
 
-            try: self.driver.hide_keyboard() 
-            except: pass
+                # Scroll antes de la Dirección
+                self.scroll_pequeno()
+                time.sleep(1)
 
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckGeneroM"]'))).click()
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckBox[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckTratamiento"]'))).click()
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]')
+                click_texto_lista("CIUDAD DE MEXICO")
 
-            # 6. Pequeño scroll y Lesiones
-            self.scroll_pequeno()
-            time.sleep(1)
+                click_auto_scroll('(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[2]')
+                click_texto_lista("Coyoacán")
 
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.RadioButton[@resource-id="com.mx.aseguradoradigital.banorte:id/terceroPeatonDCheckLesionesSI"]'))).click()
-            
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[1]'))).click()
-            time.sleep(1)
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="Fractura Cuello"]'))).click()
+                # --- CORRECCIÓN CLAVE ---
+                # Scroll extra para empujar "Proveedor" fuera de la pantalla. 
+                # Así los cuadros vacíos de la calle quedan listos para usar los índices [2], [3] y [5].
+                self.scroll_pequeno()
+                time.sleep(1)
 
-            # 7. Otro pequeño scroll y Dirección (Estado, Municipio, Colonia)
-            self.scroll_pequeno()
-            time.sleep(1)
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]', "Calle Test")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]', "364")
+                escribir_auto_scroll('(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]', "Prueba")
 
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[2]'))).click()
-            time.sleep(1)
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="CIUDAD DE MEXICO"]'))).click()
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosNoAutoContainerBtnSave"]')
+                time.sleep(2)
 
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[3]'))).click()
-            time.sleep(1)
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="Gustavo A. Madero"]'))).click()
+                # ==============================================================
+                # FINALIZACIÓN TOTAL DEL MÓDULO TERCEROS
+                # ==============================================================
+                print("Regresando a la pestaña de Autos para el guardado final...")
+                # 1. Regresar a la pestaña de Autos (Usamos contains por si el número cambia)
+                click_auto_scroll('//android.widget.LinearLayout[contains(@content-desc, "Autos")]')
+                time.sleep(2)
 
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '(//android.widget.Spinner[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonSpinner"])[4]'))).click()
-            time.sleep(1)
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.CheckedTextView[@resource-id="android:id/text1" and @text="Tepetates"]'))).click()
+                print("Presionando el botón de Guardar General...")
+                # 2. Guardado final de todo el módulo
+                click_auto_scroll('//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosBtnSave"]')
+                time.sleep(2)
 
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[2]'))).send_keys("calle test")
-            try: self.driver.hide_keyboard() 
-            except: pass
+                # 3. Manejo del pop-up opcional (Si aparece, se presiona el botón indicado)
+                print("Verificando si aparece pop-up de confirmación final...")
+                try:
+                    wait_corto = WebDriverWait(self.driver, 5)
+                    boton_cancel_popup = wait_corto.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertCommonBtnCancel"]')))
+                    boton_cancel_popup.click()
+                    print("Pop-up detectado y aceptado.")
+                except TimeoutException:
+                    print("No apareció pop-up adicional, el proceso terminó limpio.")
 
-            # 8. Pequeño scroll y más datos de la dirección
-            self.scroll_pequeno()
-            time.sleep(1)
-
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[3]'))).send_keys("400")
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[4]'))).send_keys("1")
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[5]'))).send_keys("casa bonita")
-            try: self.driver.hide_keyboard() 
-            except: pass
-
-            # 9. Scroll hasta abajo y Contactos
-            self.scroll_hasta_abajo(repeticiones=1)
-            time.sleep(1)
-
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[6]'))).send_keys("pruebaBan@gmail.com")
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '(//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"])[7]'))).send_keys("pruebaBan@gmail.com")
-            try: self.driver.hide_keyboard() 
-            except: pass
-
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.FrameLayout[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosPContainerDcontacto"]/androidx.appcompat.widget.LinearLayoutCompat/android.widget.RelativeLayout/android.widget.FrameLayout/androidx.appcompat.widget.LinearLayoutCompat/androidx.appcompat.widget.LinearLayoutCompat'))).click()
-            self.wait.until(EC.presence_of_element_located((AppiumBy.XPATH, '//android.widget.EditText[@resource-id="com.mx.aseguradoradigital.banorte:id/vInputCommonEditTxt"]'))).send_keys("5555555555")
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/dAlertInputBtnOk"]'))).click()
-
-            # 10. Pequeño scroll y Firma
-            self.scroll_pequeno()
-            time.sleep(1)
-
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@text="AÑADIR FIRMA DIGITAL"]'))).click()
-            self.firmar('//android.view.View[@resource-id="com.mx.aseguradoradigital.banorte:id/signaturePad"]')
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/signatureBtnOk"]'))).click()
-
-            # 11. Guardar sección NO AUTOS
-            print("Guardando sección de Tercero: NO AUTOS...")
-            self.wait.until(EC.element_to_be_clickable((AppiumBy.XPATH, '//android.widget.Button[@resource-id="com.mx.aseguradoradigital.banorte:id/tercerosNoAutoContainerBtnSave"]'))).click()
-            time.sleep(2)
+                time.sleep(2)
 
             print("¡Módulo Terceros completado al 100%!")
 
